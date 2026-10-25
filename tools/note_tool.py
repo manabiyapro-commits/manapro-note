@@ -256,10 +256,19 @@ def parse_article(page):
     body = ex.markdown()
     if not body.strip():
         return None
+    # ページに埋め込まれた記事データ（エスケープ済みJSON）の canRead / price で有料かどうかを判定する。
+    # "paywall" などの文字列は無料記事のページにも含まれるため使わない。
+    can_read = re.search(r'canRead\\*"\s*:\s*(true|false)', page)
+    price = re.search(r'price\\*"\s*:\s*(\d+)', page)
+    if can_read:
+        partial = can_read.group(1) == "false"
+    else:
+        partial = any(m in page for m in PAYWALL_MARKERS[1:])
     return {
         "body": body,
         "hashtags": list(dict.fromkeys(ex.hashtags)),
-        "partial": any(m in page for m in PAYWALL_MARKERS),
+        "partial": partial,
+        "price": int(price.group(1)) if price else None,
         "description": meta_content(page, "og:description"),
     }
 
@@ -282,6 +291,7 @@ def save_article(bdir, cfg, item, art):
         f"brand: {yaml_str(cfg['brand'])}",
         f"hashtags: {yaml_str(art['hashtags'])}",
         f"partial: {'true' if art['partial'] else 'false'}",
+        f"price: {art['price'] if art.get('price') is not None else ''}",
         f"fetched_at: {now_iso()}",
         "---",
         "",
