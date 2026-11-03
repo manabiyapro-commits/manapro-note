@@ -1,6 +1,11 @@
-# note 執筆支援（note-writing/）
+# note 執筆支援（manapro-note）
 
 note記事の執筆を支援する仕組みです。モデルを再訓練するのではなく、**保存した過去記事とスタイルガイドを参照して書きます**。
+
+## リポジトリについて
+- このリポジトリは manapro-site の `note-writing/`（ブランチ `claude/note-writing-system`）から、履歴ごと独立させたものです。旧 `note-writing/` の中身がリポジトリ直下にあります。
+- X投稿の半自動化（Buffer 連携）は別リポジトリ `manabiyapro-commits/manapro-X` で管理しています。
+- コマンドはすべてリポジトリ直下で実行します。
 
 ## ブランド管理
 - ブランドごとに `brands/<フォルダ>/` で管理します。記事・一覧・スタイルガイドは、すべてそのフォルダの中に置きます。

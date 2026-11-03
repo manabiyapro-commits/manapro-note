@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """note記事アーカイブ & 執筆支援ツール（標準ライブラリのみ）
 
-使い方（note-writing/ で実行）:
+使い方（リポジトリ直下で実行）:
   python3 tools/note_tool.py count    --brand manabiya-project
   python3 tools/note_tool.py fetch    --brand manabiya-project --limit 3
   python3 tools/note_tool.py index    --brand manabiya-project
