@@ -373,7 +373,11 @@ def cmd_fetch(args):
     if args.limit:
         targets = targets[: args.limit]
     print(f"RSS: {len(items)}件 / 取得対象: {len(targets)}件（待機 {args.delay} 秒/件）")
+    if not targets:
+        print("新着なし（保存済みの記事はスキップ）")
+        return {"rss_count": len(items), "targets": 0, "saved": 0, "failed": 0}
     ok = 0
+    failed = 0
     for it in targets:
         reason = None
         try:
@@ -397,6 +401,7 @@ def cmd_fetch(args):
         except Exception as e:
             reason = f"{type(e).__name__}: {e}"
         if reason:
+            failed += 1
             failures[it["url"]] = {"title": it["title"], "date": it["date"], "reason": reason, "at": now_iso()}
             print(f"  NG  {it['title']}  {it['url']}  理由: {reason}")
             if reason.startswith("HTTP 429"):
@@ -406,11 +411,20 @@ def cmd_fetch(args):
     write_index(bdir, items)
     print(f"\n保存 {ok}件 / 失敗 {len(failures)}件（詳細: {(bdir / '取得失敗一覧.md').relative_to(ROOT)}）")
 
+    return {"rss_count": len(items), "targets": len(targets), "saved": ok, "failed": failed}
+
 
 def write_index(bdir, rss_items=None):
     arts = load_articles(bdir)
     saved = {article_key(a["url"]): a for a in arts}
     rows = {}
+    # RSSから消えた未取得記事も一覧に保持する。
+    old_index = bdir / "記事一覧.csv"
+    if old_index.exists():
+        with old_index.open(encoding="utf-8-sig", newline="") as f:
+            for row in csv.DictReader(f):
+                rows[article_key(row["URL"])] = {
+                    "date": row["投稿日"], "title": row["タイトル"], "url": row["URL"]}
     for it in rss_items or []:
         rows[article_key(it["url"])] = {"date": it["date"], "title": it["title"], "url": it["url"]}
     for k, a in saved.items():
@@ -600,3 +614,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

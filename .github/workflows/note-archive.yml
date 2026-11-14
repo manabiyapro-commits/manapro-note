@@ -1,0 +1,59 @@
+name: Archive public note articles
+on:
+  schedule:
+    - cron: '0 22 * * *' # 07:00 Asia/Tokyo, following day
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: note-archive
+  cancel-in-progress: false
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify archiver
+        run: python -m unittest discover -s tests -v
+      - name: Check RSS and archive new public articles
+        id: sync
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TZ: Asia/Tokyo
+        shell: bash
+        run: |
+          mkdir -p run-report
+          set -o pipefail
+          python -u tools/note_sync.py 2>&1 | tee run-report/sync.log
+      - name: Commit archive changes, including recorded failures
+        if: ${{ !cancelled() && steps.sync.outcome != 'skipped' }}
+        env:
+          TARGET_BRANCH: ${{ github.event.repository.default_branch }}
+        shell: bash
+        run: |
+          git add -- brands/manabiya-project/articles brands/manabiya-project/failures.json brands/manabiya-project/取得失敗一覧.md brands/manabiya-project/記事一覧.md brands/manabiya-project/記事一覧.csv
+          if git diff --cached --quiet; then
+            echo 'Archive unchanged; no commit.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore: archive new public note articles and failures'
+          # Refuse to overwrite concurrent human changes. A rejected push fails visibly.
+          git push origin "HEAD:$TARGET_BRANCH"
+      - name: Preserve run report and log
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: note-archive-${{ github.run_id }}-${{ github.run_attempt }}
+          path: run-report/
+          retention-days: 90
+          if-no-files-found: warn
