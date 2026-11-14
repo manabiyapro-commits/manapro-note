@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -12,6 +13,10 @@ import note_sync
 
 class SyncTests(unittest.TestCase):
     def setUp(self):
+        # Tests must not append simulated failures to the production Actions summary.
+        env_patch = patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": ""})
+        env_patch.start()
+        self.addCleanup(env_patch.stop)
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
         self.bdir = self.root / 'brands/test'
